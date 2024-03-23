@@ -1,6 +1,7 @@
 import telebot
 import time
 from pytube import YouTube
+import os
 
 token = '7174359547:AAHrqaYoQfm0LixkAD0t383a8gqVAUZQZTQ'
 
@@ -29,20 +30,41 @@ def send_sticker(message):
 
 @bot.message_handler(commands=['vidio'])
 def vidio(message):
-    bot.reply_to(message, 'Вставь ссылку на видио')
+    bot.send_message(message.chat.id, "Привет! Отправь мне ссылку на видео с YouTube, чтобы я мог его загрузить.")
     bot.register_next_step_handler(message,vidios_url)
 
-def save_vidios(message, vidio_url):
-    save_location = '/vidios'
-    yt = YouTube(vidios_url)
-    stream = yt.streams.filter(res='360p', progressive=True).first()
-    stream.download(output_path=save_location)
-
-@bot.message_handler(content_types=['text'])
+@bot.message_handler(func=lambda message: True)
 def vidios_url(message):
-    vidio_url = message.text
-    return vidio_url
-    save_vidios()
+    chat_id = message.chat.id
+    youtube_link = message.text
+
+    try:
+        yt = YouTube(youtube_link)
+        stream = yt.streams.filter(res='360p', progressive=True).first()
+        YtName = f"{yt.title}.mp4"
+
+        # Создание уникального имени файла
+        num = 1
+        filename = 'file' + str(num) + '.mp4'
+        while os.path.exists(filename):
+            num += 1
+            filename = 'file' + str(num) + '.mp4'
+
+        stream.download(output_path='vidios', filename=filename)
+
+        # Отправка видео в чат
+        video_file = open(f'vidios/{filename}', 'rb')
+        bot.send_video(chat_id, video_file)
+        video_file.close()
+
+        bot.send_message(chat_id, f"Видео {YtName} успешно загружено!")
+        os.remove(filename)  # Удаление временного файла после отправки
+
+    except Exception as e:
+        bot.send_message(chat_id, f"Произошла ошибка при загрузке видео: {e}")
+
+
+
 
 
 
